@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body {
+            
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 0;
+            margin: 0;
+            background: transparent; /* Black background for the ground */
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* Prevent scrollbars during splash screen */
+        }
+
+        section{
+            width: 100%;
+            height: 100vh;
+            background-image: url(./pexels-zdenek-rosenthaler-1395581-2694056.jpg); background-size: cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+        }
+        canvas {
+            border: 5px solid #fff; /* White border around the canvas */
+            background-color: #00000094; /* Green background for the snake's area */
+            border-radius: 10px;
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        #splashScreen, #loader, #gameOverScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            text-align: center;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        #splashScreen h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+        #splashScreen p {
+            margin-top: 10px;
+            font-size: 1.5rem;
+            opacity: 0;
+            animation: fadeIn 1s 1s forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        #loader {
+            display: none;
+            flex-direction: column;
+        }
+        #loader div {
+            width: 100px;
+            height: 5px;
+            background: #fff;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+        #loader div::before {
+            content: '';
+            width: 50%;
+            height: 100%;
+            background: #ff8800;
+            position: absolute;
+            top: 0;
+            left: -50%;
+            animation: load 1s infinite;
+        }
+        @keyframes load {
+            0% { left: -50%; }
+            100% { left: 100%; }
+        }
+        #gameOverScreen {
+            display: none;
+            flex-direction: column;
+        }
+        #playAgain {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            border: none;
+            background-color: #3498db;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #playAgain:hover {
+            background-color: #2980b9;
+        }
+        #pauseButton {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            border: none;
+            background-color: #e74c3c;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        #pauseButton:hover {
+            background-color: #c0392b;
+        }
+        /* Responsive styling */
+        @media (max-width: 360px) {
+            #splashScreen, #loader, #gameOverScreen {
+                font-size: 18px;
+            }
+            canvas {
+                width: 90%;
+                height: auto;
+                border-width: 1px;
+            }
+            #playAgain, #pauseButton {
+                font-size: 16px;
+                padding: 8px 16px;
+            }
+        }
+    </style>
+</head>
+<body > <section style=> 
+    <!-- <video src="./3130284-uhd_3840_2160_30fps.mp4" loop  autoplay width="100%" height=" 100vh" style="position: absolute;"></video> -->
+    <div id="splashScreen">
+        <div><img src="./snake.jpg" alt="" width="290px" height=" 200px"></div>
+        <h1>Welcome to <br>the Snake Game!</h1>
+        <p>Rewind your childhood</p>
+    </div>
+    <div id="loader">
+        <div></div>
+    </div>
+    <div id="gameOverScreen">
+        <div>Game Over</div>
+        <button id="playAgain">Play Again</button>
+    </div>
+    <button id="pauseButton">Pause</button>
+    <canvas id="gameCanvas" width="350" height="350"></canvas>
+
+    <!-- Audio elements -->
+    <audio id="startSound" src="primitive-snake-charmer-melody-104216 (1).mp3"  preload="auto"></audio>
+    <audio id="eatSound" src="hiss3-103123.mp3" preload="auto"></audio>
+    <audio id="gameoverSound" src="primitive-snake-charmer-melody-104216 (1).mp3" preload="auto"></audio>
+
+</section>
+    
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const box = 20;
+        const canvasSize = canvas.width / box;
+
+        let snake = [];
+        snake[0] = { x: 10 * box, y: 10 * box };
+
+        let food = {
+            x: Math.floor(Math.random() * canvasSize) * box,
+            y: Math.floor(Math.random() * canvasSize) * box
+        };
+
+        let d;
+        let score = 0;
+        let gameInterval;
+        let isPaused = false;
+
+        const startSound = document.getElementById('startSound');
+        const eatSound = document.getElementById('eatSound');
+        const gameoverSound = document.getElementById('gameoverSound');
+
+        function startGame() {
+            startSound.play();
+            document.getElementById('splashScreen').style.display = 'none';
+            document.getElementById('loader').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('loader').style.display = 'none';
+                canvas.style.display = 'block';
+                gameInterval = setInterval(draw, 100);
+            }, 2000); // Adjust time to your liking
+        }
+
+        function resetGame() {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            snake = [{ x: 10 * box, y: 10 * box }];
+            food = {
+                x: Math.floor(Math.random() * canvasSize) * box,
+                y: Math.floor(Math.random() * canvasSize) * box
+            };
+            d = null;
+            score = 0;
+            canvas.style.display = 'block';
+            gameInterval = setInterval(draw, 100);
+        }
+
+        function gameOver() {
+            gameoverSound.play();
+            clearInterval(gameInterval);
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        document.getElementById('playAgain').addEventListener('click', () => {
+            resetGame();
+        });
+
+        document.getElementById('pauseButton').addEventListener('click', () => {
+            if (isPaused) {
+                gameInterval = setInterval(draw, 100);
+                document.getElementById('pauseButton').textContent = 'Pause';
+            } else {
+                clearInterval(gameInterval);
+                document.getElementById('pauseButton').textContent = 'Resume';
+            }
+            isPaused = !isPaused;
+        });
+
+        document.addEventListener('keydown', direction);
+
+        function direction(event) {
+            if (event.keyCode === 37 && d !== 'RIGHT') d = 'LEFT';
+            if (event.keyCode === 38 && d !== 'DOWN') d = 'UP';
+            if (event.keyCode === 39 && d !== 'LEFT') d = 'RIGHT';
+            if (event.keyCode === 40 && d !== 'UP') d = 'DOWN';
+        }
+
+        // Touch controls for mobile
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const dx = touch.clientX - touchStartX;
+            const dy = touch.clientY - touchStartY;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Horizontal swipe
+                if (dx > 0 && d !== 'LEFT') d = 'RIGHT';
+                else if (dx < 0 && d !== 'RIGHT') d = 'LEFT';
+            } else {
+                // Vertical swipe
+                if (dy > 0 && d !== 'UP') d = 'DOWN';
+                else if (dy < 0 && d !== 'DOWN') d = 'UP';
+            }
+        });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < snake.length; i++) {
+                ctx.fillStyle = (i === 0) ? 'orange' : '#ffffff'; // Red head, white body
+                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+                ctx.strokeStyle = '#000000';
+                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+            }
+
+            ctx.fillStyle = 'red'; // Food color
+            ctx.beginPath();
+            ctx.arc(food.x + box / 2, food.y + box / 2, box / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#000000';
+            ctx.stroke();
+
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
+
+            if (d === 'LEFT') snakeX -= box;
+            if (d === 'UP') snakeY -= box;
+            if (d === 'RIGHT') snakeX += box;
+            if (d === 'DOWN') snakeY += box;
+
+            if (snakeX === food.x && snakeY === food.y) {
+                eatSound.play();
+                score++;
+                food = {
+                    x: Math.floor(Math.random() * canvasSize) * box,
+                    y: Math.floor(Math.random() * canvasSize) * box
+                };
+            } else {
+                snake.pop();
+            }
+
+            const newHead = { x: snakeX, y: snakeY };
+
+            if (snakeX < 0 || snakeY < 0 || snakeX >= canvas.width || snakeY >= canvas.height || collision(newHead, snake)) {
+                gameOver();
+                return;
+            }
+
+            snake.unshift(newHead);
+
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText('Score: ' + score, box, box);
+        }
+
+        function collision(head, array) {
+            for (let i = 0; i < array.length; i++) {
+                if (head.x === array[i].x && head.y === array[i].y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        window.onload = startGame;
+
+        window.onload = function() {
+            setTimeout(startGame, 3000); // Show splash screen for 3 seconds
+        };
+ 
+
+    </script>
+</body>
+</html>
